@@ -1,0 +1,42 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+</head>
+<body>
+<h2>SignalR Chat</h2>
+<input type="text" id="userInput" placeholder="Enter your name">
+<input type="text" id="messageInput" placeholder="Enter message">
+<button onclick="sendMessage()">Send</button>
+
+<ul id="messagesList"></ul>
+
+<script>
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("http://localhost:5118/chathub", {
+            skipNegotiation: true, // Add this only if using WebSockets directly
+            transport: signalR.HttpTransportType.WebSockets
+        })
+        .withAutomaticReconnect()
+        .build();
+
+    connection.start()
+        .then(() => console.log("Connected to SignalR"))
+        .catch(err => console.error("SignalR Connection Error: ", err));
+    connection.on("ReceiveMessage", (user, message) => {
+        const li = document.createElement("li");
+        li.textContent = `${user}: ${message}`;
+        document.getElementById("messagesList").appendChild(li);
+    });
+
+    function sendMessage() {
+        const user = document.getElementById("userInput").value;
+        const message = document.getElementById("messageInput").value;
+        connection.invoke("SendMessage", user, message).catch(err => console.error(err));
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+@InMindLab9.ServerB_HostAddress = http://localhost:5246
+
+GET {{InMindLab9.ServerB_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

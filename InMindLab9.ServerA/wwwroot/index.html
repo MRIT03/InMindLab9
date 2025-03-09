@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h2 { color: #333; }
+        #chat-container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #connectionIdContainer {
+            font-size: 14px;
+            color: #555;
+            background: #e5e5e5;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        #chatbox {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            overflow-y: auto;
+            padding: 10px;
+            background: #fff;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 15px;
+            margin: 5px 0;
+            display: inline-block;
+            word-wrap: break-word;
+        }
+        .sent {
+            background: #007bff;
+            color: white;
+            align-self: flex-end;
+        }
+        .received {
+            background: #e5e5e5;
+            color: black;
+            align-self: flex-start;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<h2>Messaging App</h2>
+<div id="chat-container">
+    <div id="connectionIdContainer">
+        <strong>Your Connection ID:</strong> <span id="connId">Loading...</span>
+    </div>
+
+    <label>Enter Username:</label>
+    <input type="text" id="usernameInput" placeholder="Your username">
+
+    <div id="chatbox"></div>
+
+    <input type="text" id="toUserId" placeholder="Recipient Connection ID">
+    <input type="text" id="messageInput" placeholder="Enter message">
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("http://localhost:5118/chathub", {
+            skipNegotiation: true,
+            transport: signalR.HttpTransportType.WebSockets
+        })
+        .withAutomaticReconnect()
+        .build();
+
+    let myUsername = "";
+
+    connection.start().then(() => {
+        console.log("Connected to SignalR");
+        connection.invoke("GetConnectionId").then(id => {
+            document.getElementById("connId").innerText = id;
+        });
+    }).catch(err => console.error("Connection error:", err));
+
+    connection.on("ReceiveMessage", (fromUser, message) => {
+        displayMessage(fromUser, message, "received");
+    });
+
+    function sendMessage() {
+        const toUserId = document.getElementById("toUserId").value;
+        const message = document.getElementById("messageInput").value;
+        myUsername = document.getElementById("usernameInput").value.trim();
+
+        if (!myUsername) {
+            alert("Please enter your username first.");
+            return;
+        }
+
+        if (toUserId.trim() === "" || message.trim() === "") {
+            alert("Please enter a recipient and a message.");
+            return;
+        }
+
+        // Display the message in the chatbox instantly
+        displayMessage("You", message, "sent");
+
+        connection.invoke("SendMessageToMicroservice", toUserId, `${myUsername}: ${message}`)
+            .catch(err => console.error(err));
+
+        // Clear input after sending
+        document.getElementById("messageInput").value = "";
+    }
+
+    function displayMessage(fromUser, message, type) {
+        const chatbox = document.getElementById("chatbox");
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message", type);
+        msgDiv.innerHTML = `<strong>${fromUser}:</strong> ${message}`;
+        chatbox.appendChild(msgDiv);
+        chatbox.scrollTop = chatbox.scrollHeight;
+    }
+</script>
+</body>
+</html>
